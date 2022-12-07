@@ -165,6 +165,7 @@ ManipulatorModelInfo createManipulatorModelInfo(const PinocchioInterface& interf
     }
     case ManipulatorModelType::WheelBasedMobileManipulator: {
       // for wheel-based, the input dimension is (v, omega, dq_j) while state dimension is (x, y, psi, q_j).
+      // 这个赋值方式我可真的是吐了，你直接都从state上面减不行么？
       info.inputDim = info.stateDim - 1;
       info.armDim = info.inputDim - 2;
       break;

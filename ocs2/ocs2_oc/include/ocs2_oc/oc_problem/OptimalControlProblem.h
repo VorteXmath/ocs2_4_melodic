@@ -45,6 +45,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace ocs2 {
 
 /** Optimal Control Problem definition */
+// 一切的开始
 struct OptimalControlProblem {
   /* Cost */
   /** Intermediate cost */

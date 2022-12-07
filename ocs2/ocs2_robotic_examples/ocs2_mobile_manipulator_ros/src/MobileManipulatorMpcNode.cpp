@@ -54,6 +54,13 @@ int main(int argc, char** argv) {
   std::cerr << "Loading library folder: " << libFolder << std::endl;
   std::cerr << "Loading urdf file: " << urdfFile << std::endl;
   // Robot interface
+  // 这里面主要是在进行一些初始化。
+  // 设置了机器人的初始位置，这个可以通过其他方式给与。
+  // TODO：我期望在这里可以写一个callback函数，以获得实机的届时的真实关节空间配置。
+  // 设置了总体的cost的权重（？）
+  // 设置了一些约束，主要是软约束，有两个是根据机器人本身特性决定的软约束，作用目前未知。
+  // 另外一个是stateinput软约束，主要由state的软约束和input的软约束构成。
+  // 还有一个碰撞约束。
   MobileManipulatorInterface interface(taskFile, libFolder, urdfFile);
 
   // ROS ReferenceManager

@@ -71,6 +71,7 @@ namespace mobile_manipulator {
 /******************************************************************************************************/
 MobileManipulatorInterface::MobileManipulatorInterface(const std::string& taskFile, const std::string& libraryFolder,
                                                        const std::string& urdfFile) {
+  // 利用boost来读各种文件
   // check that task file exists
   boost::filesystem::path taskFilePath(taskFile);
   if (boost::filesystem::exists(taskFilePath)) {
@@ -91,15 +92,24 @@ MobileManipulatorInterface::MobileManipulatorInterface(const std::string& taskFi
   std::cerr << "[MobileManipulatorInterface] Generated library path: " << libraryFolderPath << std::endl;
 
   // read the task file
+  // boost的property_tree可以帮助程序获得外部xml,json,ini,info四种格式的文本数据。
+  // 不过如果我们的主框架和算法逻辑就是在ros中的话，我们完全可以使用nodehandle的getParam()那个方法。
+  // boost这种方法看起来蛮帅的，在今后的代码编写中，如果考虑到代码在ros外的运行，可以考虑将传参的部分更改为这个。——王逸飞
   boost::property_tree::ptree pt;
   boost::property_tree::read_info(taskFile, pt);
+
   // resolve meta-information about the model
   // read manipulator type
+  // 这里面的的就固定的几种，但我不太理解dummy float和full actuated float之间的区别???
   ManipulatorModelType modelType = mobile_manipulator::loadManipulatorType(taskFile, "model_information.manipulatorModelType");
+
   // read the joints to make fixed
+  // 这个东西可能有点意思，比如说我们可以通过设置的方式来使一个/一部分关节保持不动的状态（执行器缺失->欠驱动）
   std::vector<std::string> removeJointNames;
   loadData::loadStdVector<std::string>(taskFile, "model_information.removeJoints", removeJointNames, false);
+
   // read the frame names
+  // 焯，这两种方法好像不大一样啊
   std::string baseFrame, eeFrame;
   loadData::loadPtreeValue<std::string>(pt, baseFrame, "model_information.baseFrame", false);
   loadData::loadPtreeValue<std::string>(pt, eeFrame, "model_information.eeFrame", false);
@@ -110,16 +120,18 @@ MobileManipulatorInterface::MobileManipulatorInterface(const std::string& taskFi
   std::cerr << "\n #### model_information.removeJoints: ";
   for (const auto& name : removeJointNames) {
     std::cerr << "\"" << name << "\" ";
-  }
+  } // 方法清奇
   std::cerr << "\n #### model_information.baseFrame: \"" << baseFrame << "\"";
   std::cerr << "\n #### model_information.eeFrame: \"" << eeFrame << "\"" << std::endl;
   std::cerr << " #### =============================================================================" << std::endl;
 
   // create pinocchio interface
+  // 碰撞检测逐项，这里其实可以按下不表
   pinocchioInterfacePtr_.reset(new PinocchioInterface(createPinocchioInterface(urdfFile, modelType, removeJointNames)));
   std::cerr << *pinocchioInterfacePtr_;
 
   // ManipulatorModelInfo
+  // 一些典型的信息传入。
   manipulatorModelInfo_ = mobile_manipulator::createManipulatorModelInfo(*pinocchioInterfacePtr_, modelType, baseFrame, eeFrame);
 
   bool usePreComputation = true;
@@ -131,6 +143,7 @@ MobileManipulatorInterface::MobileManipulatorInterface(const std::string& taskFi
   std::cerr << " #### =============================================================================\n";
 
   // Default initial state
+  // 这里面全置零真的没问题么?
   initialState_.setZero(manipulatorModelInfo_.stateDim);
   const int baseStateDim = manipulatorModelInfo_.stateDim - manipulatorModelInfo_.armDim;
   const int armStateDim = manipulatorModelInfo_.armDim;
@@ -142,7 +155,10 @@ MobileManipulatorInterface::MobileManipulatorInterface(const std::string& taskFi
     initialState_.head(baseStateDim) = initialBaseState;
   }
 
-  // arm joints DOFs velocity limits
+  // arm joints DOFs velocity limits 
+  // 这里其实是在弄arm的初始位姿。如果要改进的话，我建议可以从这里开始着手改起。
+  // 我建议这里直接通过某种方式直接获取ur5e的关节空间的角度，并且直接赋值过来。
+  // 这里的赋值代码恐怕会在其他地方用得到。比如稍后的mpc_observation。
   vector_t initialArmState = vector_t::Zero(armStateDim);
   loadData::loadEigenMatrix(taskFile, "initialState.arm", initialArmState);
   initialState_.tail(armStateDim) = initialArmState;
@@ -150,27 +166,35 @@ MobileManipulatorInterface::MobileManipulatorInterface(const std::string& taskFi
   std::cerr << "Initial State:   " << initialState_.transpose() << std::endl;
 
   // DDP-MPC settings
+  // 内部算法settting
   ddpSettings_ = ddp::loadSettings(taskFile, "ddp");
   mpcSettings_ = mpc::loadSettings(taskFile, "mpc");
 
   // Reference Manager
+  // 不知道是干嘛的
   referenceManagerPtr_.reset(new ReferenceManager);
 
   /*
    * Optimal control problem
    */
   // Cost
+  // 输入的代价，就我们目前的机器人来看，这个主要来自v, omega, dq_j（注意这里面是关节旋转的角速度）。
+  // 所以，最好可以找到ur5e的关节空间的角速度控制器。
   problem_.costPtr->add("inputCost", getQuadraticInputCost(taskFile));
 
   // Constraints
   // joint limits constraint
+  // 如题
   problem_.softConstraintPtr->add("jointLimits", getJointLimitSoftConstraint(*pinocchioInterfacePtr_, taskFile));
   // end-effector state constraint
+  // 这个主要是啥啊。。。主要是。。。
   problem_.stateSoftConstraintPtr->add("endEffector", getEndEffectorConstraint(*pinocchioInterfacePtr_, taskFile, "endEffector",
                                                                                usePreComputation, libraryFolder, recompileLibraries));
+  //这个我也不知道啊 焯。。。
   problem_.finalSoftConstraintPtr->add("finalEndEffector", getEndEffectorConstraint(*pinocchioInterfacePtr_, taskFile, "finalEndEffector",
                                                                                     usePreComputation, libraryFolder, recompileLibraries));
   // self-collision avoidance constraint
+  // 如题
   bool activateSelfCollision = true;
   loadData::loadPtreeValue(pt, activateSelfCollision, "selfCollision.activate", true);
   if (activateSelfCollision) {
@@ -180,6 +204,7 @@ MobileManipulatorInterface::MobileManipulatorInterface(const std::string& taskFi
   }
 
   // Dynamics
+  // 这个是什么，有影响么？？？
   switch (manipulatorModelInfo_.manipulatorModelType) {
     case ManipulatorModelType::DefaultManipulator: {
       problem_.dynamicsPtr.reset(
@@ -223,6 +248,7 @@ MobileManipulatorInterface::MobileManipulatorInterface(const std::string& taskFi
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+// 注意这里是unique_ptr, 对于我们的机器人来说，这里的input目前是8，两个底盘速度，六个机械臂关节速度。
 std::unique_ptr<StateInputCost> MobileManipulatorInterface::getQuadraticInputCost(const std::string& taskFile) {
   matrix_t R = matrix_t::Zero(manipulatorModelInfo_.inputDim, manipulatorModelInfo_.inputDim);
   const int baseInputDim = manipulatorModelInfo_.inputDim - manipulatorModelInfo_.armDim;
@@ -246,11 +272,16 @@ std::unique_ptr<StateInputCost> MobileManipulatorInterface::getQuadraticInputCos
   std::cerr << " #### =============================================================================\n";
 
   return std::unique_ptr<StateInputCost>(new QuadraticInputCost(std::move(R), manipulatorModelInfo_.stateDim));
+  // 这里用了move其实也很有意思，为什么需要把R当成右值？每次添加了之后，就直接取消了。为啥？
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+// 这个约束到底是什么?? 
+// 会不会是关节空间的速度和加速度之类的，我现在能想到的软约束应该就是这些了
+// 当然还有一些末端的约束。
+// 先设置好了已经。
 std::unique_ptr<StateCost> MobileManipulatorInterface::getEndEffectorConstraint(const PinocchioInterface& pinocchioInterface,
                                                                                 const std::string& taskFile, const std::string& prefix,
                                                                                 bool usePreComputation, const std::string& libraryFolder,
@@ -271,6 +302,7 @@ std::unique_ptr<StateCost> MobileManipulatorInterface::getEndEffectorConstraint(
     throw std::runtime_error("[getEndEffectorConstraint] referenceManagerPtr_ should be set first!");
   }
 
+  // 根据碰撞模型来生成约束？也许吧
   std::unique_ptr<StateConstraint> constraint;
   if (usePreComputation) {
     MobileManipulatorPinocchioMapping pinocchioMapping(manipulatorModelInfo_);
@@ -284,6 +316,7 @@ std::unique_ptr<StateCost> MobileManipulatorInterface::getEndEffectorConstraint(
     constraint.reset(new EndEffectorConstraint(eeKinematics, *referenceManagerPtr_));
   }
 
+  // 这里旋转的惩罚用了更加直观的euler角来表达了。
   std::vector<std::unique_ptr<PenaltyBase>> penaltyArray(6);
   std::generate_n(penaltyArray.begin(), 3, [&] { return std::unique_ptr<PenaltyBase>(new QuadraticPenalty(muPosition)); });
   std::generate_n(penaltyArray.begin() + 3, 3, [&] { return std::unique_ptr<PenaltyBase>(new QuadraticPenalty(muOrientation)); });
@@ -294,6 +327,7 @@ std::unique_ptr<StateCost> MobileManipulatorInterface::getEndEffectorConstraint(
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+// 焯了 完全未知领域，pinocchio这玩应绝了。
 std::unique_ptr<StateCost> MobileManipulatorInterface::getSelfCollisionConstraint(const PinocchioInterface& pinocchioInterface,
                                                                                   const std::string& taskFile, const std::string& urdfFile,
                                                                                   const std::string& prefix, bool usePreComputation,
@@ -339,6 +373,8 @@ std::unique_ptr<StateCost> MobileManipulatorInterface::getSelfCollisionConstrain
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+// 位置的软约束，速度的软约束。
+// 焯，所以上面的那个约束到底是啥啊。。。焯。。。
 std::unique_ptr<StateInputCost> MobileManipulatorInterface::getJointLimitSoftConstraint(const PinocchioInterface& pinocchioInterface,
                                                                                         const std::string& taskFile) {
   boost::property_tree::ptree pt;
@@ -354,6 +390,7 @@ std::unique_ptr<StateInputCost> MobileManipulatorInterface::getJointLimitSoftCon
   const auto& model = pinocchioInterface.getModel();
 
   // Load position limits
+  // 位置约束是一种state的软约束。
   std::vector<StateInputSoftBoxConstraint::BoxConstraint> stateLimits;
   if (activateJointPositionLimit) {
     scalar_t muPositionLimits = 1e-2;
@@ -383,6 +420,7 @@ std::unique_ptr<StateInputCost> MobileManipulatorInterface::getJointLimitSoftCon
   }
 
   // load velocity limits
+  // 由于我们输入机械臂的关节速度，所以速度是input的软约束。焯了。。
   std::vector<StateInputSoftBoxConstraint::BoxConstraint> inputLimits;
   {
     vector_t lowerBound = vector_t::Zero(manipulatorModelInfo_.inputDim);
@@ -431,6 +469,7 @@ std::unique_ptr<StateInputCost> MobileManipulatorInterface::getJointLimitSoftCon
     }
   }
 
+  // 这个其实有点意思。不太明白为什么要和在一起。
   auto boxConstraints = std::unique_ptr<StateInputSoftBoxConstraint>(new StateInputSoftBoxConstraint(stateLimits, inputLimits));
   boxConstraints->initializeOffset(0.0, vector_t::Zero(manipulatorModelInfo_.stateDim), vector_t::Zero(manipulatorModelInfo_.inputDim));
   return boxConstraints;
