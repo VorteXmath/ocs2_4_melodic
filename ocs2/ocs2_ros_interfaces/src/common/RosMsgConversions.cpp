@@ -58,6 +58,8 @@ ocs2_msgs::mpc_observation createObservationMsg(const SystemObservation& observa
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+// 由ocs2的专属消息导出 SystemObservation这个结构
+
 SystemObservation readObservationMsg(const ocs2_msgs::mpc_observation& observationMsg) {
   SystemObservation observation;
 
@@ -184,6 +186,7 @@ ocs2_msgs::mpc_target_trajectories createTargetTrajectoriesMsg(const TargetTraje
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+// 由ocs2的专属消息导出 TargetTrajectory这个结构
 TargetTrajectories readTargetTrajectoriesMsg(const ocs2_msgs::mpc_target_trajectories& targetTrajectoriesMsg) {
   size_t N = targetTrajectoriesMsg.stateTrajectory.size();
   if (N == 0) {

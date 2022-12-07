@@ -66,6 +66,8 @@ int main(int argc, char** argv) {
   // ROS ReferenceManager
   // 上面写的是同步组件，这边其实不是特别明白。
   // 另外还有就是为什么会，订阅那个信息，target_trajectory是什么？他和其他的消息到底有什么实质上的区别。
+  // 这是一直在订阅的，可能是吧，相当于是目标的实时更新？？？
+  // 建议打断点，测试一下逻辑。
   std::shared_ptr<ocs2::RosReferenceManager> rosReferenceManagerPtr(
       new ocs2::RosReferenceManager(robotName, interface.getReferenceManagerPtr()));
   rosReferenceManagerPtr->subscribe(nodeHandle);
