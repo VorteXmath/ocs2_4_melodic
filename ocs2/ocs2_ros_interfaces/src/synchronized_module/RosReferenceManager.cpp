@@ -48,6 +48,7 @@ RosReferenceManager::RosReferenceManager(std::string topicPrefix, std::shared_pt
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+// mode_schedule消息的作用到底是什么？
 void RosReferenceManager::subscribe(ros::NodeHandle& nodeHandle) {
   // ModeSchedule
   auto modeScheduleCallback = [this](const ocs2_msgs::mode_schedule::ConstPtr& msg) {
