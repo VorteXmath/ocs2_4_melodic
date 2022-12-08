@@ -34,6 +34,9 @@ using namespace ocs2;
 /**
  * Converts the pose of the interactive marker to TargetTrajectories.
  */
+// 目前还不是很清楚SystemObservation的结构。主要问题在于这个mode，和 time都是什么。
+// state和input还比较好猜，但是也不是很敢确定。
+// 这个target trajectory好像只有一个值啊。初始的input也都置零了。
 TargetTrajectories goalPoseToTargetTrajectories(const Eigen::Vector3d& position, const Eigen::Quaterniond& orientation,
                                                 const SystemObservation& observation) {
   // time trajectory
@@ -52,6 +55,9 @@ int main(int argc, char* argv[]) {
   ::ros::init(argc, argv, robotName + "_target");
   ::ros::NodeHandle nodeHandle;
 
+  // 看来主要是在这里使能的这个方法，
+  // 但是我不是特别清楚，最外层的是在那里，即是在哪里开启的这个节点？
+  // 更：注意launch文件的最后一行，下回细心点，没事的。
   TargetTrajectoriesInteractiveMarker targetPoseCommand(nodeHandle, robotName, &goalPoseToTargetTrajectories);
   targetPoseCommand.publishInteractiveMarker();
 

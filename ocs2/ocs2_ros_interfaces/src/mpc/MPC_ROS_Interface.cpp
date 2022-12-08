@@ -203,6 +203,17 @@ void MPC_ROS_Interface::publisherWorker() {
     // publish the message
     mpcPolicyPublisher_.publish(mpcPolicyMsg);
 
+    // 检视 input 输出 第一个就是。
+    // 对于我们的机器人来说一共八个值，前两个是v omega。后面是六个dqj从shoulder_pan一直到wrist_3 
+    // 等等，这个好像不是我想的这样。
+    // 其实也是你想的那样的。
+    // std::cout << "the 0 input solution from the mpc: " << mpcPolicyMsg.inputTrajectory[0] << std::endl;
+    // std::cout << "the 3 input solution from the mpc: " << mpcPolicyMsg.inputTrajectory[3] << std::endl;
+
+    // std::cout << "the 0 controller solution from the mpc: " << mpcPolicyMsg.data[0] << std::endl;
+    // std::cout << "the 3 controller solution from the mpc: " << mpcPolicyMsg.data[3] << std::endl;
+
+
     readyToPublish_ = false;
     lk.unlock();
     msgReady_.notify_one();
@@ -244,6 +255,11 @@ void MPC_ROS_Interface::mpcObservationCallback(const ocs2_msgs::mpc_observation:
 
   // current time, state, input, and subsystem
   const auto currentObservation = ros_msg_conversions::readObservationMsg(*msg);
+    // 检视 observation 输入 
+    std::cout << "the current time observation from the mrt (so far): " << msg->time<< std::endl;
+    std::cout << "the current input observation from the mrt (so far): " << msg->input<< std::endl;
+    std::cout << "the current state observation from the mrt (so far): " << msg->state<< std::endl;
+    std::cout << "the current mode observation from the mrt (so far): " << msg->mode<< std::endl;
 
   // measure the delay in running MPC
   mpcTimer_.startTimer();
@@ -327,6 +343,8 @@ void MPC_ROS_Interface::spin() {
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+// 这里发布了policy
+// 接收了observation
 void MPC_ROS_Interface::launchNodes(ros::NodeHandle& nodeHandle) {
   ROS_INFO_STREAM("MPC node is setting up ...");
 

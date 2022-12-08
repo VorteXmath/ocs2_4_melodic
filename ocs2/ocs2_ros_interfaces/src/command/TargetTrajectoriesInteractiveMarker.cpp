@@ -37,6 +37,8 @@ namespace ocs2 {
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+// 不管怎么说，这里主要是先借由interactive marker获得了target的位置，并且获得了目前的observation，这个观测可以帮助我们生成target trajectory
+// 并最终把这个target trajectory 通过ros reference manager送到算法里面去。
 TargetTrajectoriesInteractiveMarker::TargetTrajectoriesInteractiveMarker(::ros::NodeHandle& nodeHandle, const std::string& topicPrefix,
                                                                          GaolPoseToTargetTrajectories gaolPoseToTargetTrajectories)
     : server_("simple_marker"), gaolPoseToTargetTrajectories_(std::move(gaolPoseToTargetTrajectories)) {
@@ -158,6 +160,8 @@ void TargetTrajectoriesInteractiveMarker::processFeedback(const visualization_ms
   }
 
   // get TargetTrajectories
+  // 我没找到这个东西的出处在哪里。
+  // 更：这个东西的位置位于，ocs2/ocs2_robotic_examples/ocs2_mobile_manipulator_ros/src/MobileManipulatorTarget.cpp
   const auto targetTrajectories = gaolPoseToTargetTrajectories_(position, orientation, observation);
 
   // publish TargetTrajectories

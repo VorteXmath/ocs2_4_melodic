@@ -37,6 +37,7 @@ namespace ocs2 {
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+// 进程管理和消息发布订阅么？？？不是很明白。
 MRT_ROS_Interface::MRT_ROS_Interface(std::string topicPrefix, ros::TransportHints mrtTransportHints)
     : topicPrefix_(std::move(topicPrefix)), mrtTransportHints_(mrtTransportHints) {
 // Start thread for publishing
@@ -77,6 +78,7 @@ void MRT_ROS_Interface::resetMpcNode(const TargetTrajectories& initTargetTraject
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+// 如题
 void MRT_ROS_Interface::setCurrentObservation(const SystemObservation& currentObservation) {
 #ifdef PUBLISH_THREAD
   std::unique_lock<std::mutex> lk(publisherMutex_);
@@ -122,6 +124,13 @@ void MRT_ROS_Interface::publisherWorkerThread() {
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+// 如题，但是具体的操作不明白
+// 具体参考ocs2/ocs2_msgs/msg/mpc_flattened_controller.msg中的定义
+// 里面首先定义了controller的类型
+// 还有一个初始的observation，以及一个用来计算cost的经过plan后的target trajectory
+// 还有经过优化后的state， input以及time的trajectory
+// 重要：这里面有一个msg实际上的payload，就是controller的data，每一个向量都和时间序列一一对应
+// 最后这个消息还包含一个performance表征。
 void MRT_ROS_Interface::readPolicyMsg(const ocs2_msgs::mpc_flattened_controller& msg, CommandData& commandData,
                                       PrimalSolution& primalSolution, PerformanceIndex& performanceIndices) {
   commandData.mpcInitObservation_ = ros_msg_conversions::readObservationMsg(msg.initObservation);
@@ -171,11 +180,13 @@ void MRT_ROS_Interface::readPolicyMsg(const ocs2_msgs::mpc_flattened_controller&
   // instantiate the correct controller
   switch (msg.controllerType) {
     case ocs2_msgs::mpc_flattened_controller::CONTROLLER_FEEDFORWARD: {
+      std::cout << "feedforward controller" << std::endl;
       auto controller = FeedforwardController::unFlatten(primalSolution.timeTrajectory_, controllerDataPtrArray);
       primalSolution.controllerPtr_.reset(new FeedforwardController(std::move(controller)));
       break;
     }
     case ocs2_msgs::mpc_flattened_controller::CONTROLLER_LINEAR: {
+      std::cout << "linear controller" << std::endl;
       auto controller = LinearController::unFlatten(stateDim, inputDim, primalSolution.timeTrajectory_, controllerDataPtrArray);
       primalSolution.controllerPtr_.reset(new LinearController(std::move(controller)));
       break;
@@ -188,6 +199,7 @@ void MRT_ROS_Interface::readPolicyMsg(const ocs2_msgs::mpc_flattened_controller&
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+// 解析从mpc_ros_interface传过来的policy消息
 void MRT_ROS_Interface::mpcPolicyCallback(const ocs2_msgs::mpc_flattened_controller::ConstPtr& msg) {
   // read new policy and command from msg
   std::unique_ptr<CommandData> commandPtr(new CommandData);
@@ -243,6 +255,8 @@ void MRT_ROS_Interface::spinMRT() {
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+// 这里才是observation的发送端。
+// 这里也是policy的接收端。
 void MRT_ROS_Interface::launchNodes(ros::NodeHandle& nodeHandle) {
   this->reset();
 

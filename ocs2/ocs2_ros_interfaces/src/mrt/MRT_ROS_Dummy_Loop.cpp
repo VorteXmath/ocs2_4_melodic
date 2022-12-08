@@ -75,6 +75,7 @@ void MRT_ROS_Dummy_Loop::run(const SystemObservation& initObservation, const Tar
 /******************************************************************************************************/
 void MRT_ROS_Dummy_Loop::synchronizedDummyLoop(const SystemObservation& initObservation, const TargetTrajectories& initTargetTrajectories) {
   // Determine the ratio between MPC updates and simulation steps.
+  // 这是什么意思？在实机测试中也许不是必要的。
   const auto mpcUpdateRatio = std::max(static_cast<size_t>(mrtDesiredFrequency_ / mpcDesiredFrequency_), size_t(1));
 
   // Loop variables
@@ -83,6 +84,10 @@ void MRT_ROS_Dummy_Loop::synchronizedDummyLoop(const SystemObservation& initObse
 
   // Helper function to check if policy is updated and starts at the given time.
   // Due to ROS message conversion delay and very fast MPC loop, we might get an old policy instead of the latest one.
+  // 时间对齐。
+  // 这里特别特别的关键，主要是时间的问题，
+  // 相较于其他东西，我们可以较为简单的得到input和state
+  // 但是时间只能在这里面获得。
   const auto policyUpdatedForTime = [this](scalar_t time) {
     constexpr scalar_t tol = 0.1;  // policy must start within this fraction of dt
     return mrt_.updatePolicy() && std::abs(mrt_.getPolicy().timeTrajectory_.front() - time) < (tol / mpcDesiredFrequency_);

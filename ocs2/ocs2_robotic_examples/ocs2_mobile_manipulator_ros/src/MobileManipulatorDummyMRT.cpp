@@ -56,28 +56,35 @@ int main(int argc, char** argv) {
   std::cerr << "Loading library folder: " << libFolder << std::endl;
   std::cerr << "Loading urdf file: " << urdfFile << std::endl;
   // Robot Interface
+  // 我不明白，为什么这里要在弄一个这个？
   mobile_manipulator::MobileManipulatorInterface interface(taskFile, libFolder, urdfFile);
 
   // MRT
+  // rollout 貌似是依照控制器进行的前向状态推演的工具
+  // 这里面首先初始化了这样的推演，然后发送observation（也许是实时），并接收policy（主要和控制器有关，也许）
   MRT_ROS_Interface mrt(robotName);
   mrt.initRollout(&interface.getRollout());
   mrt.launchNodes(nodeHandle);
 
   // Visualization
+  // 这部分也许没什么特殊的。主要是可视化的部分。
   std::shared_ptr<mobile_manipulator::MobileManipulatorDummyVisualization> dummyVisualization(
       new mobile_manipulator::MobileManipulatorDummyVisualization(nodeHandle, interface));
 
   // Dummy MRT
+  // 这个属实不知道在干什么。
   MRT_ROS_Dummy_Loop dummy(mrt, interface.mpcSettings().mrtDesiredFrequency_, interface.mpcSettings().mpcDesiredFrequency_);
   dummy.subscribeObservers({dummyVisualization});
 
   // initial state
+  // observation的初始化。
   SystemObservation initObservation;
   initObservation.state = interface.getInitialState();
   initObservation.input.setZero(interface.getManipulatorModelInfo().inputDim);
   initObservation.time = 0.0;
 
   // initial command
+  // command的初始化。可以看出初始的init target trajectory只包含一组数据。
   vector_t initTarget(7);
   initTarget.head(3) << 1, 0, 1;
   initTarget.tail(4) << Eigen::Quaternion<scalar_t>(1, 0, 0, 0).coeffs();

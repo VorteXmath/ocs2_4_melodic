@@ -88,6 +88,7 @@ void MobileManipulatorDummyVisualization::launchVisualizerNode(ros::NodeHandle& 
     ROS_ERROR("Failed to extract kdl tree from xml robot description");
   }
 
+  // 这里的发布器初始化
   robotStatePublisherPtr_.reset(new robot_state_publisher::RobotStatePublisher(tree));
   robotStatePublisherPtr_->publishFixedTransforms("", true);
 
@@ -121,6 +122,7 @@ void MobileManipulatorDummyVisualization::launchVisualizerNode(ros::NodeHandle& 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+// 可视化更新，无他。
 void MobileManipulatorDummyVisualization::update(const SystemObservation& observation, const PrimalSolution& policy,
                                                  const CommandData& command) {
   const ros::Time timeStamp = ros::Time::now();
@@ -136,11 +138,15 @@ void MobileManipulatorDummyVisualization::update(const SystemObservation& observ
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+// 为了真实的再rviz中显示机器人的状态变化，所以这里开始发布tf
+// 这个函数并不发送observation，而是将已经接收到的observation信息进行可视化。
+// 可视化的主要部分在于机器人的模型
 void MobileManipulatorDummyVisualization::publishObservation(const ros::Time& timeStamp, const SystemObservation& observation) {
   // publish world -> base transform
   const auto r_world_base = getBasePosition(observation.state, modelInfo_);
   const Eigen::Quaternion<scalar_t> q_world_base = getBaseOrientation(observation.state, modelInfo_);
 
+  // 这里通过外面的observation来得到底盘相对与world的tf值
   geometry_msgs::TransformStamped base_tf;
   base_tf.header.stamp = timeStamp;
   base_tf.header.frame_id = "world";
@@ -150,6 +156,8 @@ void MobileManipulatorDummyVisualization::publishObservation(const ros::Time& ti
   tfBroadcaster_.sendTransform(base_tf);
 
   // publish joints transforms
+  // 这里通过外面的observation来得到机械臂各个joint的位置值
+  // 注意：如果joint属于removeJointNames里面的，那么它的缺省角度将是0.0。
   const auto j_arm = getArmJointAngles(observation.state, modelInfo_);
   std::map<std::string, scalar_t> jointPositions;
   for (size_t i = 0; i < modelInfo_.dofNames.size(); i++) {
@@ -164,6 +172,8 @@ void MobileManipulatorDummyVisualization::publishObservation(const ros::Time& ti
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+// 不明，还是不明
+// 查到其父位于ocs2/ocs2_ros_interfaces/src/mrt/LoopshapingDummyObserver.cpp
 void MobileManipulatorDummyVisualization::publishTargetTrajectories(const ros::Time& timeStamp,
                                                                     const TargetTrajectories& targetTrajectories) {
   // publish command transform
@@ -182,6 +192,10 @@ void MobileManipulatorDummyVisualization::publishTargetTrajectories(const ros::T
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+// 主要的目的是发布两条轨迹，一个是末端执行器的，但是这条轨迹没有位姿，我们可以试试向里面增加位姿。后续：DONE
+// 另一条是底盘的。
+// 现在我们让这个可视化同时包含了末端执行器和底盘的路径和位姿，一共四个。
+// 但是我强烈不建议在这里作接口，时效性是一方面。另一方面，如果这样弄得话就会使得MPC控制失去意义！！！
 void MobileManipulatorDummyVisualization::publishOptimizedTrajectory(const ros::Time& timeStamp, const PrimalSolution& policy) {
   const scalar_t TRAJECTORYLINEWIDTH = 0.005;
   const std::array<scalar_t, 3> red{0.6350, 0.0780, 0.1840};
@@ -207,7 +221,22 @@ void MobileManipulatorDummyVisualization::publishOptimizedTrajectory(const ros::
     pinocchio::updateFramePlacements(model, data);
     const auto eeIndex = model.getBodyId(modelInfo_.eeFrame);
     const vector_t eePosition = data.oMf[eeIndex].translation();
+    geometry_msgs::Point ee_position;
+    ee_position = ros_msg_helpers::getPointMsg(eePosition);
     endEffectorTrajectory.push_back(ros_msg_helpers::getPointMsg(eePosition));
+    const Eigen::Quaterniond eeOrientation(data.oMf[eeIndex].rotation());
+    // std::cout << eeOrientation.x() << ", " 
+    //           << eeOrientation.y() << ", " 
+    //           << eeOrientation.z() << ", " 
+    //           << eeOrientation.w() << std::endl; 
+    geometry_msgs::Pose ee_pose;
+    ee_pose.position = ee_position;
+    ee_pose.orientation.x = eeOrientation.x();
+    ee_pose.orientation.y = eeOrientation.y();
+    ee_pose.orientation.z = eeOrientation.w();
+    ee_pose.orientation.w = eeOrientation.z();
+    poseArray.poses.push_back(std::move(ee_pose));
+
   });
 
   markerArray.markers.emplace_back(ros_msg_helpers::getLineMsg(std::move(endEffectorTrajectory), blue, TRAJECTORYLINEWIDTH));
