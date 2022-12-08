@@ -434,10 +434,9 @@
   </joint>
 
   <joint name="associate_joint" type="fixed">
-    <origin rpy="0 0 0" xyz="0.365 0 0.28"/>
+    <origin rpy="0 0 -1.57" xyz="0.365 0 0.28"/>
     <parent link="vehicle_base_link"/>
     <child link="base_link"/>
   </joint>
 
 </robot>
-
