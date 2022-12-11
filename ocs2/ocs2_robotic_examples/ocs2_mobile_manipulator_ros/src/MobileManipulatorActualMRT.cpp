@@ -41,12 +41,25 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 using namespace ocs2;
 using namespace mobile_manipulator;
 
+
+
+
 int main(int argc, char** argv) {
   const std::string robotName = "mobile_manipulator";
 
   // Initialize ros node
   ros::init(argc, argv, robotName + "_mrt");
   ros::NodeHandle nodeHandle;
+  ros::Subscriber  // get the current MPC controll policy from the MPC node
+  ros::Subscriber  // get the current base state from the LIO_SAM
+  ros::Subscriber  // get the current arm joint state from the joint_controller
+  ros::Publisher  // offer the current state of the whole robot to the MPC node
+  ros::Publisher  // offer the /cmd_vel to the base
+  ros::Publisher  // offer the arm joint control command to the controller.
+  while(nodeHandle.ok())
+  {
+    
+  }
   // Get node parameters
   std::string taskFile, libFolder, urdfFile;
   nodeHandle.getParam("/taskFile", taskFile);
