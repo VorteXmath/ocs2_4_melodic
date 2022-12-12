@@ -28,6 +28,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ******************************************************************************/
 
 #include <ocs2_mobile_manipulator/MobileManipulatorInterface.h>
+#include <ocs2_mobile_manipulator_ros/MobileManipulatorActualMRT.h>
 
 #include <ocs2_mobile_manipulator_ros/MobileManipulatorDummyVisualization.h>
 
@@ -41,6 +42,109 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 using namespace ocs2;
 using namespace mobile_manipulator;
 
+ActualMRT::ActualMRT(ros::NodeHandle &n) : n_(n)
+{
+  sub_base_state_ = n_.subscribe("/lio_sam/mapping/odometry", 1, 
+                                &ActualMRT::base_odometry_callback, this, ros::TransportHints().tcpNoDelay());
+                              
+  // TODO the corresponding publisher on the joint controller
+  sub_arm_state_ = n_.subscribe("/ur5e_joint_velocity_controller/joint_states", 1, 
+                               &ActualMRT::arm_joint_state_callback, this, ros::TransportHints().tcpNoDelay());
+
+  sub_policy_ = n_.subscribe("/mobile_manipulator_mpc_policy", , 1, 
+                            &ActualMRT::mpc_polic_callback, this, ros::TransportHints().tcpNoDelay());
+
+  pub_base_command_ = n_.advertise<geometry_msgs::Twist>("/cmd_vel", 1); 
+
+  pub_arm_command_ = n_.advertise<geometry_msgs::Twist>("/now_joint_command", 1); 
+
+  pub_observation_ = n_.advertise<ocs2_msgs::mpc_observation>("/mobile_manipulator_mpc_observation", 1); 
+}
+
+void ActualMRT::base_odometry_callback(const nav_msgs::Odometry& slam_odom)
+{
+  base_map_translation_ << slam_odom.pose.pose.position.x,
+                             slam_odom.pose.pose.position.y,
+                             slam_odom.pose.pose.position.z;
+  base_map_orientation_.coeffs() <<  slam_odom.pose.pose.orientation.x,
+                                       slam_odom.pose.pose.orientation.y,
+                                       slam_odom.pose.pose.orientation.z,
+                                       slam_odom.pose.pose.orientation.w;
+  Eigen::Vector3d eulerAngle=quaternion.matrix().eulerAngles(0,1,2);
+  theta_ = eulerAngle(2);
+}
+
+void ActualMRT::arm_joint_state_callback(const geometry_msgs::Twist& arm_joint)
+{
+  arm_joint_state_ << arm_joint.linear.x,
+                   << arm_joint.linear.y,
+                   << arm_joint.linear.z,
+                   << arm_joint.angular.x,
+                   << arm_joint.angular.y,
+                   << arm_joint.angular.z;
+}
+
+void ActualMRT::mpc_polic_callback(const ocs2_msgs::mpc_flattened_controller& msg) {
+  // read new policy and command from msg
+  base_command_.linear.x = msg.data[0][0];
+  base_command_.angular.z = msg.data[0][1];
+  arm_command_.linear.x = msg.data[0][2];
+  arm_command_.linear.y = msg.data[0][3];
+  arm_command_.linear.z = msg.data[0][4];
+  arm_command_.angular.x = msg.data[0][5];
+  arm_command_.angular.y = msg.data[0][6];
+  arm_command_.angular.z = msg.data[0][7];
+}
+
+void ActualMRT::fusion(SystemObservation& fused_observation)
+{
+  fused_observation.time = ros::Time::now().toSec();
+  fused_observation.state[0] = base_map_translation_(0);
+  fused_observation.state[1] = base_map_translation_(1);
+  fused_observation.state[2] = theta_;
+  for(int i = 0; i < 6; i++)
+  {
+    fused_observation.state[i+3] = arm_joint_state_(i);
+  }
+  fused_observation.input[0] = base_command_.linear.x;
+  fused_observation.input[1] = base_command_.angular.z;
+  fused_observation.input[2] = arm_command_.linear.x;
+  fused_observation.input[3] = arm_command_.linear.y;
+  fused_observation.input[4] = arm_command_.linear.z;
+  fused_observation.input[5] = arm_command_.angular.x;
+  fused_observation.input[6] = arm_command_.angular.y;
+  fused_observation.input[7] = arm_command_.angular.z;
+}
+
+void ActualMRT::publish_everything()
+{
+  SystemObservation currentObservation;
+  pub_base_command_.publish(base_command_);
+  pub_arm_command_.publish(arm_command_);
+  fusion(currentObservation);
+  mpcObservationMsg_ = ros_msg_conversions::createObservationMsg(currentObservation);
+  pub_observation_.publish(mpcObservationMsg_);
+}
+
+void ActualMRT::run()
+{
+  publish_everything();
+}
+
+void ActualMRT::reset(const TargetTrajectories& initTargetTrajectories)
+{
+  ocs2_msgs::reset resetSrv;
+  resetSrv.request.reset = static_cast<uint8_t>(true);
+  resetSrv.request.targetTrajectories = ros_msg_conversions::createTargetTrajectoriesMsg(initTargetTrajectories);
+
+  while (!mpcResetServiceClient_.waitForExistence(ros::Duration(5.0)) && ::ros::ok() && ::ros::master::check()) {
+    ROS_ERROR_STREAM("Failed to call service to reset MPC, retrying...");
+  }
+
+  mpcResetServiceClient_.call(resetSrv);
+  ROS_INFO_STREAM("MPC node has been reset.");
+}
+
 
 
 
@@ -48,64 +152,32 @@ int main(int argc, char** argv) {
   const std::string robotName = "mobile_manipulator";
 
   // Initialize ros node
-  ros::init(argc, argv, robotName + "_mrt");
-  ros::NodeHandle nodeHandle;
-  ros::Subscriber  // get the current MPC controll policy from the MPC node
-  ros::Subscriber  // get the current base state from the LIO_SAM
-  ros::Subscriber  // get the current arm joint state from the joint_controller
-  ros::Publisher  // offer the current state of the whole robot to the MPC node
-  ros::Publisher  // offer the /cmd_vel to the base
-  ros::Publisher  // offer the arm joint control command to the controller.
-  while(nodeHandle.ok())
-  {
-    
-  }
-  // Get node parameters
-  std::string taskFile, libFolder, urdfFile;
-  nodeHandle.getParam("/taskFile", taskFile);
-  nodeHandle.getParam("/libFolder", libFolder);
-  nodeHandle.getParam("/urdfFile", urdfFile);
-  std::cerr << "Loading task file: " << taskFile << std::endl;
-  std::cerr << "Loading library folder: " << libFolder << std::endl;
-  std::cerr << "Loading urdf file: " << urdfFile << std::endl;
-  // Robot Interface
-  // 我不明白，为什么这里要在弄一个这个？
-  mobile_manipulator::MobileManipulatorInterface interface(taskFile, libFolder, urdfFile);
+  ros::init(argc, argv, robotName + "_actual_mrt");
+  ros::NodeHandle n;
 
-  // MRT
-  // rollout 貌似是依照控制器进行的前向状态推演的工具
-  // 这里面首先初始化了这样的推演，然后发送observation（也许是实时），并接收policy（主要和控制器有关，也许）
-  MRT_ROS_Interface mrt(robotName);
-  mrt.initRollout(&interface.getRollout());
-  mrt.launchNodes(nodeHandle);
+  ActualMRT ActualMRT(n);
+  ros::AsyncSpinner spinner(7);
 
-  // Visualization
-  // 这部分也许没什么特殊的。主要是可视化的部分。
-  std::shared_ptr<mobile_manipulator::MobileManipulatorDummyVisualization> dummyVisualization(
-      new mobile_manipulator::MobileManipulatorDummyVisualization(nodeHandle, interface));
-
-  // Dummy MRT
-  // 这个属实不知道在干什么。
-  MRT_ROS_Dummy_Loop dummy(mrt, interface.mpcSettings().mrtDesiredFrequency_, interface.mpcSettings().mpcDesiredFrequency_);
-  dummy.subscribeObservers({dummyVisualization});
-
-  // initial state
-  // observation的初始化。
+  //initialization of observation
   SystemObservation initObservation;
-  initObservation.state = interface.getInitialState();
-  initObservation.input.setZero(interface.getManipulatorModelInfo().inputDim);
+  ActualMRT.fusion(initObservation);
+  initObservation.input.setZero(8);
   initObservation.time = 0.0;
+
 
   // initial command
   // command的初始化。可以看出初始的init target trajectory只包含一组数据。
   vector_t initTarget(7);
   initTarget.head(3) << 1, 0, 1;
   initTarget.tail(4) << Eigen::Quaternion<scalar_t>(1, 0, 0, 0).coeffs();
-  const vector_t zeroInput = vector_t::Zero(interface.getManipulatorModelInfo().inputDim);
+  const vector_t zeroInput = vector_t::Zero(8);
   const TargetTrajectories initTargetTrajectories({initObservation.time}, {initTarget}, {zeroInput});
 
   // Run dummy (loops while ros is ok)
-  dummy.run(initObservation, initTargetTrajectories);
+  ActualMRT.reset(initTargetTrajectories);
+
+  if()
+  ActualMRT.run();
 
   // Successful exit
   return 0;
