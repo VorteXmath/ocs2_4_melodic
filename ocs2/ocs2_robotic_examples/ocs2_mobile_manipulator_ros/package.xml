@@ -21,6 +21,7 @@
   <depend>robot_state_publisher</depend>
   <depend>visualization_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
   <depend>ocs2_core</depend>
   <depend>ocs2_ddp</depend>
   <depend>ocs2_mpc</depend>

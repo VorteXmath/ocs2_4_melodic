@@ -12,6 +12,7 @@ set(CATKIN_PACKAGE_DEPENDENCIES
   robot_state_publisher
   visualization_msgs
   geometry_msgs
+  nav_msgs
   ocs2_ros_interfaces
   ocs2_core
   ocs2_ddp
@@ -93,6 +94,7 @@ target_compile_options(mobile_manipulator_mpc_node PUBLIC ${FLAGS})
 # Actual node
 add_executable(mobile_manipulator_actual_mrt_node
   src/MobileManipulatorActualMRT.cpp
+  include/ocs2_mobile_manipulator_ros/MobileManipulatorActualMRT.h
 )
 add_dependencies(mobile_manipulator_actual_mrt_node
   ${catkin_EXPORTED_TARGETS}

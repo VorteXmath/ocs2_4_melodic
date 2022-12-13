@@ -10,7 +10,14 @@
 #include <ros/package.h>
 #include "ocs2_ros_interfaces/common/RosMsgConversions.h"
 #include <ocs2_mpc/SystemObservation.h>
+#include <nav_msgs/Odometry.h>
+#include <geometry_msgs/Twist.h>
+#include "ocs2_core/reference/TargetTrajectories.h"
 
+typedef Eigen::Matrix<double, 6, 1> Vector6d;
+
+namespace ocs2 {
+namespace mobile_manipulator {
 
 class ActualMRT
 {
@@ -22,6 +29,7 @@ public:
   void fusion(SystemObservation& fused_observation);
   void publish_everything();
   void run();
+  void reset(const TargetTrajectories& initTargetTrajectories);
 
 public:
   ros::NodeHandle n_;
@@ -34,16 +42,19 @@ public:
 
   ros::ServiceClient mpcResetServiceClient_;
   
-  geometry_msgs::Odometry base_state_msgs_;
-  geometry_msgs::Twist arm_state_msgs_;
   
   geometry_msgs::Twist base_command_;
-  geometry_msgs::Twsit arm_command_;
+  geometry_msgs::Twist arm_command_;
   ocs2_msgs::mpc_observation mpcObservationMsg_;
 
   Eigen::Vector3d base_map_translation_;
   double theta_;
   Eigen::Quaterniond base_map_orientation_;
-  Eigen::Vector6d arm_joint_state_;
+  Vector6d arm_joint_state_;
 
-}
+};
+
+
+
+}  // namespace mobile_manipulator
+}  // namespace ocs2

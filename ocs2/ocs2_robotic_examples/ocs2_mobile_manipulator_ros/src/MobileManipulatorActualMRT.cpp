@@ -51,8 +51,8 @@ ActualMRT::ActualMRT(ros::NodeHandle &n) : n_(n)
   sub_arm_state_ = n_.subscribe("/ur5e_joint_velocity_controller/joint_states", 1, 
                                &ActualMRT::arm_joint_state_callback, this, ros::TransportHints().tcpNoDelay());
 
-  sub_policy_ = n_.subscribe("/mobile_manipulator_mpc_policy", , 1, 
-                            &ActualMRT::mpc_polic_callback, this, ros::TransportHints().tcpNoDelay());
+  sub_policy_ = n_.subscribe("/mobile_manipulator_mpc_policy", 1, 
+                            &ActualMRT::mpc_policy_callback, this, ros::TransportHints().tcpNoDelay());
 
   pub_base_command_ = n_.advertise<geometry_msgs::Twist>("/cmd_vel", 1); 
 
@@ -70,30 +70,30 @@ void ActualMRT::base_odometry_callback(const nav_msgs::Odometry& slam_odom)
                                        slam_odom.pose.pose.orientation.y,
                                        slam_odom.pose.pose.orientation.z,
                                        slam_odom.pose.pose.orientation.w;
-  Eigen::Vector3d eulerAngle=quaternion.matrix().eulerAngles(0,1,2);
+  Eigen::Vector3d eulerAngle=base_map_orientation_.matrix().eulerAngles(0,1,2);
   theta_ = eulerAngle(2);
 }
 
 void ActualMRT::arm_joint_state_callback(const geometry_msgs::Twist& arm_joint)
 {
   arm_joint_state_ << arm_joint.linear.x,
-                   << arm_joint.linear.y,
-                   << arm_joint.linear.z,
-                   << arm_joint.angular.x,
-                   << arm_joint.angular.y,
-                   << arm_joint.angular.z;
+                     arm_joint.linear.y,
+                     arm_joint.linear.z,
+                     arm_joint.angular.x,
+                      arm_joint.angular.y,
+                     arm_joint.angular.z;
 }
 
-void ActualMRT::mpc_polic_callback(const ocs2_msgs::mpc_flattened_controller& msg) {
+void ActualMRT::mpc_policy_callback(const ocs2_msgs::mpc_flattened_controller& msg) {
   // read new policy and command from msg
-  base_command_.linear.x = msg.data[0][0];
-  base_command_.angular.z = msg.data[0][1];
-  arm_command_.linear.x = msg.data[0][2];
-  arm_command_.linear.y = msg.data[0][3];
-  arm_command_.linear.z = msg.data[0][4];
-  arm_command_.angular.x = msg.data[0][5];
-  arm_command_.angular.y = msg.data[0][6];
-  arm_command_.angular.z = msg.data[0][7];
+  base_command_.linear.x = msg.data[0].data[0];
+  base_command_.angular.z = msg.data[0].data[1];
+  arm_command_.linear.x = msg.data[0].data[2];
+  arm_command_.linear.y = msg.data[0].data[3];
+  arm_command_.linear.z = msg.data[0].data[4];
+  arm_command_.angular.x = msg.data[0].data[5];
+  arm_command_.angular.y = msg.data[0].data[6];
+  arm_command_.angular.z = msg.data[0].data[7];
 }
 
 void ActualMRT::fusion(SystemObservation& fused_observation)
@@ -176,7 +176,6 @@ int main(int argc, char** argv) {
   // Run dummy (loops while ros is ok)
   ActualMRT.reset(initTargetTrajectories);
 
-  if()
   ActualMRT.run();
 
   // Successful exit
