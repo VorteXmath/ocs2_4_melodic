@@ -1,0 +1,25 @@
+<launch>
+      <!-- Enable rviz visualization -->
+      <arg name="rviz"        default="true" />
+      <!-- Set nodes on debug mode -->
+      <arg name="debug"       default="false" />
+
+      <!-- The URDF model of the robot -->
+      <!-- 注意。这里raigor的urdf相当缺省，首先没有履带，其次机械臂底座和底盘的tf转换关系不同于实物-->
+      <arg name="urdfFile"    value="$(find ocs2_robotic_assets)/resources/mobile_manipulator/raigor/urdf/raigor.urdf" />
+      
+      
+      <!-- The task file for the mpc. -->
+      <!-- 注意。命名对应。-->
+      <arg name="taskFile"    value="$(find ocs2_mobile_manipulator)/config/raigor/task.info" />
+      <!-- The library folder to generate CppAD codegen into -->
+      <arg name="libFolder"   value="$(find ocs2_mobile_manipulator)/auto_generated/raigor" />
+      
+      <include file="$(find ocs2_mobile_manipulator_ros)/launch/include/mobile_manipulator_actual.launch">
+            <arg name="rviz"        value="$(arg rviz)" />
+            <arg name="debug"       value="$(arg debug)" />
+            <arg name="urdfFile"    value="$(arg urdfFile)" />
+            <arg name="taskFile"    value="$(arg taskFile)" />
+            <arg name="libFolder"   value="$(arg libFolder)" />
+      </include>
+</launch>

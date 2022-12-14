@@ -99,21 +99,24 @@ void ActualMRT::mpc_policy_callback(const ocs2_msgs::mpc_flattened_controller& m
 void ActualMRT::fusion(SystemObservation& fused_observation)
 {
   fused_observation.time = ros::Time::now().toSec();
-  fused_observation.state[0] = base_map_translation_(0);
-  fused_observation.state[1] = base_map_translation_(1);
-  fused_observation.state[2] = theta_;
+  fused_observation.state.setZero(9);
+  fused_observation.input.setZero(8);
+
+  fused_observation.state(0) = base_map_translation_(0);
+  fused_observation.state(1) = base_map_translation_(1);
+  fused_observation.state(2) = theta_;
   for(int i = 0; i < 6; i++)
   {
-    fused_observation.state[i+3] = arm_joint_state_(i);
+    fused_observation.state(i+3) = 0;//arm_joint_state_(i);
   }
-  fused_observation.input[0] = base_command_.linear.x;
-  fused_observation.input[1] = base_command_.angular.z;
-  fused_observation.input[2] = arm_command_.linear.x;
-  fused_observation.input[3] = arm_command_.linear.y;
-  fused_observation.input[4] = arm_command_.linear.z;
-  fused_observation.input[5] = arm_command_.angular.x;
-  fused_observation.input[6] = arm_command_.angular.y;
-  fused_observation.input[7] = arm_command_.angular.z;
+  fused_observation.input(0) = base_command_.linear.x;
+  fused_observation.input(1) = base_command_.angular.z;
+  fused_observation.input(2) = arm_command_.linear.x;
+  fused_observation.input(3) = arm_command_.linear.y;
+  fused_observation.input(4) = arm_command_.linear.z;
+  fused_observation.input(5) = arm_command_.angular.x;
+  fused_observation.input(6) = arm_command_.angular.y;
+  fused_observation.input(7) = arm_command_.angular.z;
 }
 
 void ActualMRT::publish_everything()
