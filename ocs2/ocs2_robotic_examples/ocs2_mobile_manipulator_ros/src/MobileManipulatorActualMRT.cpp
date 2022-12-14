@@ -59,6 +59,9 @@ ActualMRT::ActualMRT(ros::NodeHandle &n) : n_(n)
   pub_arm_command_ = n_.advertise<geometry_msgs::Twist>("/now_joint_command", 1); 
 
   pub_observation_ = n_.advertise<ocs2_msgs::mpc_observation>("/mobile_manipulator_mpc_observation", 1); 
+
+  mpcResetServiceClient_ = n_.serviceClient<ocs2_msgs::reset>("/mobile_manipulator_mpc_reset");
+
 }
 
 void ActualMRT::base_odometry_callback(const nav_msgs::Odometry& slam_odom)
@@ -131,7 +134,10 @@ void ActualMRT::publish_everything()
 
 void ActualMRT::run()
 {
-  publish_everything();
+  while(n_.ok())
+  {
+    publish_everything();
+  }
 }
 
 void ActualMRT::reset(const TargetTrajectories& initTargetTrajectories)
