@@ -1,6 +1,6 @@
 <launch>
       <!-- Enable rviz visualization -->
-      <arg name="rviz"        default="true" />
+      <arg name="rviz"        default="false" />
       <!-- Set nodes on debug mode -->
       <arg name="debug"       default="false" />
 

@@ -85,18 +85,28 @@ void ActualMRT::arm_joint_state_callback(const geometry_msgs::Twist& arm_joint)
                      arm_joint.angular.x,
                       arm_joint.angular.y,
                      arm_joint.angular.z;
+    // std::cout << "msgs recieved in the callback function"  << arm_joint_state_<< std::endl;
 }
 
 void ActualMRT::mpc_policy_callback(const ocs2_msgs::mpc_flattened_controller& msg) {
   // read new policy and command from msg
-  base_command_.linear.x = msg.data[0].data[0];
-  base_command_.angular.z = msg.data[0].data[1];
-  arm_command_.linear.x = msg.data[0].data[2];
-  arm_command_.linear.y = msg.data[0].data[3];
-  arm_command_.linear.z = msg.data[0].data[4];
-  arm_command_.angular.x = msg.data[0].data[5];
-  arm_command_.angular.y = msg.data[0].data[6];
-  arm_command_.angular.z = msg.data[0].data[7];
+  base_command_.linear.x = msg.data[0].data[0]/100;
+  base_command_.angular.z = msg.data[0].data[1]/100;
+  arm_command_.linear.x = msg.data[0].data[2]/100;
+  arm_command_.linear.y = msg.data[0].data[3]/100;
+  arm_command_.linear.z = msg.data[0].data[4]/100;
+  arm_command_.angular.x = msg.data[0].data[5]/100;
+  arm_command_.angular.y = msg.data[0].data[6]/100;
+  arm_command_.angular.z = msg.data[0].data[7]/100;
+  // base_command_.linear.x  = 0;
+  // base_command_.angular.z = 0;
+  // arm_command_.linear.x   = 0;
+  // arm_command_.linear.y   = 0;
+  // arm_command_.linear.z   = 0;
+  // arm_command_.angular.x  = 0;
+  // arm_command_.angular.y  = 0;
+  // arm_command_.angular.z  = 0;
+  std::cout << "the policy received: " << msg.data[0] << std::endl;
 }
 
 void ActualMRT::fusion(SystemObservation& fused_observation)
@@ -110,7 +120,7 @@ void ActualMRT::fusion(SystemObservation& fused_observation)
   fused_observation.state(2) = theta_;
   for(int i = 0; i < 6; i++)
   {
-    fused_observation.state(i+3) = 0;//arm_joint_state_(i);
+    fused_observation.state(i+3) = arm_joint_state_(i);
   }
   fused_observation.input(0) = base_command_.linear.x;
   fused_observation.input(1) = base_command_.angular.z;
@@ -120,6 +130,7 @@ void ActualMRT::fusion(SystemObservation& fused_observation)
   fused_observation.input(5) = arm_command_.angular.x;
   fused_observation.input(6) = arm_command_.angular.y;
   fused_observation.input(7) = arm_command_.angular.z;
+  // std::cout << "the entities of the state" << fused_observation.state(3) << std::endl;
 }
 
 void ActualMRT::publish_everything()
@@ -166,6 +177,8 @@ int main(int argc, char** argv) {
 
   ActualMRT ActualMRT(n);
   ros::AsyncSpinner spinner(7);
+  spinner.start();
+
 
   //initialization of observation
   SystemObservation initObservation;
