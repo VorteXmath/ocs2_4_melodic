@@ -90,14 +90,14 @@ void ActualMRT::arm_joint_state_callback(const geometry_msgs::Twist& arm_joint)
 
 void ActualMRT::mpc_policy_callback(const ocs2_msgs::mpc_flattened_controller& msg) {
   // read new policy and command from msg
-  base_command_.linear.x = msg.data[0].data[0]/100;
-  base_command_.angular.z = msg.data[0].data[1]/100;
-  arm_command_.linear.x = msg.data[0].data[2]/100;
-  arm_command_.linear.y = msg.data[0].data[3]/100;
-  arm_command_.linear.z = msg.data[0].data[4]/100;
-  arm_command_.angular.x = msg.data[0].data[5]/100;
-  arm_command_.angular.y = msg.data[0].data[6]/100;
-  arm_command_.angular.z = msg.data[0].data[7]/100;
+  base_command_.linear.x = msg.data[0].data[0]/1.5;
+  base_command_.angular.z = msg.data[0].data[1]/1.5;
+  arm_command_.linear.x = msg.data[0].data[2]/10;
+  arm_command_.linear.y = msg.data[0].data[3]/10;
+  arm_command_.linear.z = msg.data[0].data[4]/10;
+  arm_command_.angular.x = msg.data[0].data[5]/10;
+  arm_command_.angular.y = msg.data[0].data[6]/10;
+  arm_command_.angular.z = msg.data[0].data[7]/10;
   // base_command_.linear.x  = 0;
   // base_command_.angular.z = 0;
   // arm_command_.linear.x   = 0;
@@ -190,7 +190,7 @@ int main(int argc, char** argv) {
   // initial command
   // command的初始化。可以看出初始的init target trajectory只包含一组数据。
   vector_t initTarget(7);
-  initTarget.head(3) << 1, 0, 1;
+  initTarget.head(3) << 3, 0, 1;
   initTarget.tail(4) << Eigen::Quaternion<scalar_t>(1, 0, 0, 0).coeffs();
   const vector_t zeroInput = vector_t::Zero(8);
   const TargetTrajectories initTargetTrajectories({initObservation.time}, {initTarget}, {zeroInput});

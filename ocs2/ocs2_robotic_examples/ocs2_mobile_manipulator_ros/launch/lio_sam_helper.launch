@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="tf" type="static_transform_publisher" name="velo_publisher" args="-0.06 0 1.038 0 0 0  /vehicle_base_link /velodyne 1000"/>
+</launch>
