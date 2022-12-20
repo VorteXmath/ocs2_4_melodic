@@ -61,6 +61,10 @@ MPC_ROS_Interface::~MPC_ROS_Interface() {
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+// 复位mpc模块
+// 重置mpc的初始轨迹
+// 重置mpc的时间
+// 剩下几个不知道。。。
 void MPC_ROS_Interface::resetMpcNode(TargetTrajectories&& initTargetTrajectories) {
   std::lock_guard<std::mutex> resetLock(resetMutex_);
   mpc_.reset();
@@ -74,6 +78,7 @@ void MPC_ROS_Interface::resetMpcNode(TargetTrajectories&& initTargetTrajectories
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+// 在接收到来自MRT_ROS的复位信号后就会搞这么一个callback函数来对mpc的初始轨迹进行重置
 bool MPC_ROS_Interface::resetMpcCallback(ocs2_msgs::reset::Request& req, ocs2_msgs::reset::Response& res) {
   if (static_cast<bool>(req.reset)) {
     auto targetTrajectories = ros_msg_conversions::readTargetTrajectoriesMsg(req.targetTrajectories);
