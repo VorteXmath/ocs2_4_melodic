@@ -49,7 +49,7 @@ RosReferenceManager::RosReferenceManager(std::string topicPrefix, std::shared_pt
 /******************************************************************************************************/
 /******************************************************************************************************/
 // mode_schedule消息的作用到底是什么呀？
-// 从哪里来的target trajectory捏？
+// 从哪里来的target trajectory呢？
 // 这个RosReferenceManager类是从ReferenceManager继承过来的
 // 这种工程结构有利于代码的复用。可以借鉴。
 void RosReferenceManager::subscribe(ros::NodeHandle& nodeHandle) {

@@ -187,10 +187,10 @@ MobileManipulatorInterface::MobileManipulatorInterface(const std::string& taskFi
   // 如题
   problem_.softConstraintPtr->add("jointLimits", getJointLimitSoftConstraint(*pinocchioInterfacePtr_, taskFile));
   // end-effector state constraint
-  // 这个主要是啥啊。。。主要是。。。
+  //
   problem_.stateSoftConstraintPtr->add("endEffector", getEndEffectorConstraint(*pinocchioInterfacePtr_, taskFile, "endEffector",
                                                                                usePreComputation, libraryFolder, recompileLibraries));
-  //这个我也不知道啊 焯。。。
+  //这个我也不知道啊
   problem_.finalSoftConstraintPtr->add("finalEndEffector", getEndEffectorConstraint(*pinocchioInterfacePtr_, taskFile, "finalEndEffector",
                                                                                     usePreComputation, libraryFolder, recompileLibraries));
   // self-collision avoidance constraint
@@ -278,10 +278,9 @@ std::unique_ptr<StateInputCost> MobileManipulatorInterface::getQuadraticInputCos
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-// 这个约束到底是什么?? 
-// 会不会是关节空间的速度和加速度之类的，我现在能想到的软约束应该就是这些了
-// 当然还有一些末端的约束。
-// 先设置好了已经。
+// 有一些末端的约束。
+// 之前有些想法是错误的，这里面只包含末端的约束，而末端是通过动力学库pinocchio来求解的。
+// 主要的问题是，final和state的softconstraint到底有什么不同，我很好奇。
 std::unique_ptr<StateCost> MobileManipulatorInterface::getEndEffectorConstraint(const PinocchioInterface& pinocchioInterface,
                                                                                 const std::string& taskFile, const std::string& prefix,
                                                                                 bool usePreComputation, const std::string& libraryFolder,
@@ -302,7 +301,9 @@ std::unique_ptr<StateCost> MobileManipulatorInterface::getEndEffectorConstraint(
     throw std::runtime_error("[getEndEffectorConstraint] referenceManagerPtr_ should be set first!");
   }
 
-  // 根据碰撞模型来生成约束？也许吧
+  // 之前的理解是错的，应该是这里，Pinocchio通过导入的urdf模型来计算末端的位置
+  // 这个首先通过一个pinocchio的mapping功能吧 得到了一些基本的机器人的信息，比如维度等等。
+  // 然后用pinocchio本身的运动学来得到末端的位置
   std::unique_ptr<StateConstraint> constraint;
   if (usePreComputation) {
     MobileManipulatorPinocchioMapping pinocchioMapping(manipulatorModelInfo_);
@@ -327,7 +328,7 @@ std::unique_ptr<StateCost> MobileManipulatorInterface::getEndEffectorConstraint(
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-// 焯了 完全未知领域，pinocchio这玩应绝了。
+// 完全未知领域，主要是用这个pinocchio
 std::unique_ptr<StateCost> MobileManipulatorInterface::getSelfCollisionConstraint(const PinocchioInterface& pinocchioInterface,
                                                                                   const std::string& taskFile, const std::string& urdfFile,
                                                                                   const std::string& prefix, bool usePreComputation,
@@ -373,8 +374,8 @@ std::unique_ptr<StateCost> MobileManipulatorInterface::getSelfCollisionConstrain
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-// 位置的软约束，速度的软约束。
-// 焯，所以上面的那个约束到底是啥啊。。。焯。。。
+// state的位置的软约束，速度的软约束。
+// 所以上面的那个约束到底是啥
 std::unique_ptr<StateInputCost> MobileManipulatorInterface::getJointLimitSoftConstraint(const PinocchioInterface& pinocchioInterface,
                                                                                         const std::string& taskFile) {
   boost::property_tree::ptree pt;
@@ -420,7 +421,7 @@ std::unique_ptr<StateInputCost> MobileManipulatorInterface::getJointLimitSoftCon
   }
 
   // load velocity limits
-  // 由于我们输入机械臂的关节速度，所以速度是input的软约束。焯了。。
+  // 由于我们输入机械臂的关节速度，所以速度是input的软约束
   std::vector<StateInputSoftBoxConstraint::BoxConstraint> inputLimits;
   {
     vector_t lowerBound = vector_t::Zero(manipulatorModelInfo_.inputDim);
