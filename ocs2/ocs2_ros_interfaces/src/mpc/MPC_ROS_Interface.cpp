@@ -261,10 +261,10 @@ void MPC_ROS_Interface::mpcObservationCallback(const ocs2_msgs::mpc_observation:
   // current time, state, input, and subsystem
   const auto currentObservation = ros_msg_conversions::readObservationMsg(*msg);
     // 检视 observation 输入 
-    std::cout << "the current time observation from the mrt (so far): " << msg->time<< std::endl;
-    std::cout << "the current input observation from the mrt (so far): " << msg->input<< std::endl;
-    std::cout << "the current state observation from the mrt (so far): " << msg->state<< std::endl;
-    std::cout << "the current mode observation from the mrt (so far): " << msg->mode<< std::endl;
+    // std::cout << "the current time observation from the mrt (so far): " << msg->time<< std::endl;
+    // std::cout << "the current input observation from the mrt (so far): " << msg->input<< std::endl;
+    // std::cout << "the current state observation from the mrt (so far): " << msg->state<< std::endl;
+    // std::cout << "the current mode observation from the mrt (so far): " << msg->mode<< std::endl;
 
   // measure the delay in running MPC
   mpcTimer_.startTimer();

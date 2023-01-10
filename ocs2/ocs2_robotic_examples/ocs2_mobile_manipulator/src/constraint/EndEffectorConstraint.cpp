@@ -71,6 +71,7 @@ vector_t EndEffectorConstraint::getValue(scalar_t time, const vector_t& state, c
   vector_t constraint(6);
   constraint.head<3>() = endEffectorKinematicsPtr_->getPosition(state).front() - desiredPositionOrientation.first;
   constraint.tail<3>() = endEffectorKinematicsPtr_->getOrientationError(state, {desiredPositionOrientation.second}).front();
+  // std::cout << "constraint value: " << constraint << std::endl;
   return constraint;
 }
 
