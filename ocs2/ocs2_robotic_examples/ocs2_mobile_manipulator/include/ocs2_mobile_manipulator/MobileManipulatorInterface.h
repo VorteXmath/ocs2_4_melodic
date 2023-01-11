@@ -84,6 +84,9 @@ class MobileManipulatorInterface final : public RobotInterface {
   std::unique_ptr<StateCost> getEndEffectorConstraint(const PinocchioInterface& pinocchioInterface, const std::string& taskFile,
                                                       const std::string& prefix, bool useCaching, const std::string& libraryFolder,
                                                       bool recompileLibraries);
+  std::unique_ptr<StateCost> getEndEffectorHeightConstraint(const PinocchioInterface& pinocchioInterface, const std::string& taskFile,
+                                                      const std::string& prefix, bool useCaching, const std::string& libraryFolder,
+                                                      bool recompileLibraries);
   std::unique_ptr<StateCost> getSelfCollisionConstraint(const PinocchioInterface& pinocchioInterface, const std::string& taskFile,
                                                         const std::string& urdfFile, const std::string& prefix, bool useCaching,
                                                         const std::string& libraryFolder, bool recompileLibraries);

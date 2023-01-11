@@ -68,6 +68,8 @@
         "typeindex": "cpp",
         "typeinfo": "cpp",
         "valarray": "cpp",
-        "bit": "cpp"
+        "bit": "cpp",
+        "light": "cpp",
+        "mixinvector": "cpp"
     }
 }

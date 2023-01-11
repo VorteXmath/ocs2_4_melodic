@@ -52,6 +52,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ocs2_mobile_manipulator/ManipulatorModelInfo.h"
 #include "ocs2_mobile_manipulator/MobileManipulatorPreComputation.h"
 #include "ocs2_mobile_manipulator/constraint/EndEffectorConstraint.h"
+#include "ocs2_mobile_manipulator/constraint/EndEffectorHeightConstraint.h"
 #include "ocs2_mobile_manipulator/constraint/MobileManipulatorSelfCollisionConstraint.h"
 #include "ocs2_mobile_manipulator/cost/QuadraticInputCost.h"
 #include "ocs2_mobile_manipulator/dynamics/DefaultManipulatorDynamics.h"
@@ -190,6 +191,10 @@ MobileManipulatorInterface::MobileManipulatorInterface(const std::string& taskFi
   //
   problem_.stateSoftConstraintPtr->add("endEffector", getEndEffectorConstraint(*pinocchioInterfacePtr_, taskFile, "endEffector",
                                                                                usePreComputation, libraryFolder, recompileLibraries));
+
+  //这里加一个过程中的高度的约束。
+  problem_.stateSoftConstraintPtr->add("endEffectorHeight", getEndEffectorHeightConstraint(*pinocchioInterfacePtr_, taskFile, "endEffectorHeight",
+                                                                               usePreComputation, libraryFolder, recompileLibraries));
   //这个我也不知道啊
   problem_.finalSoftConstraintPtr->add("finalEndEffector", getEndEffectorConstraint(*pinocchioInterfacePtr_, taskFile, "finalEndEffector",
                                                                                     usePreComputation, libraryFolder, recompileLibraries));
@@ -325,6 +330,53 @@ std::unique_ptr<StateCost> MobileManipulatorInterface::getEndEffectorConstraint(
   return std::unique_ptr<StateCost>(new StateSoftConstraint(std::move(constraint), std::move(penaltyArray)));
 }
 
+/******************************************************************************************************/
+/******************************************************************************************************/
+/******************************************************************************************************/
+// 末端的高度约束
+std::unique_ptr<StateCost> MobileManipulatorInterface::getEndEffectorHeightConstraint(const PinocchioInterface& pinocchioInterface,
+                                                                                const std::string& taskFile, const std::string& prefix,
+                                                                                bool usePreComputation, const std::string& libraryFolder,
+                                                                                bool recompileLibraries) {
+  scalar_t muPosition = 1.0;
+  scalar_t muOrientation = 1.0;
+  const std::string name = "WRIST_2";
+
+  boost::property_tree::ptree pt;
+  boost::property_tree::read_info(taskFile, pt);
+  std::cerr << "\n #### " << prefix << " Settings: ";
+  std::cerr << "\n #### =============================================================================\n";
+  loadData::loadPtreeValue(pt, muPosition, prefix + ".muPosition", true);
+  loadData::loadPtreeValue(pt, muOrientation, prefix + ".muOrientation", true);
+  std::cerr << " #### =============================================================================\n";
+
+  if (referenceManagerPtr_ == nullptr) {
+    throw std::runtime_error("[getEndEffectorConstraint] referenceManagerPtr_ should be set first!");
+  }
+
+  // 之前的理解是错的，应该是这里，Pinocchio通过导入的urdf模型来计算末端的位置
+  // 这个首先通过一个pinocchio的mapping功能吧 得到了一些基本的机器人的信息，比如维度等等。
+  // 然后用pinocchio本身的运动学来得到末端的位置
+  std::unique_ptr<StateConstraint> constraint;
+  if (usePreComputation) {
+    MobileManipulatorPinocchioMapping pinocchioMapping(manipulatorModelInfo_);
+    PinocchioEndEffectorKinematics eeKinematics(pinocchioInterface, pinocchioMapping, {manipulatorModelInfo_.eeFrame});
+    constraint.reset(new EndEffectorHeightConstraint(eeKinematics, *referenceManagerPtr_));
+  } else {
+    MobileManipulatorPinocchioMappingCppAd pinocchioMappingCppAd(manipulatorModelInfo_);
+    PinocchioEndEffectorKinematicsCppAd eeKinematics(pinocchioInterface, pinocchioMappingCppAd, {manipulatorModelInfo_.eeFrame},
+                                                     manipulatorModelInfo_.stateDim, manipulatorModelInfo_.inputDim,
+                                                     "end_effector_kinematics", libraryFolder, recompileLibraries, false);
+    constraint.reset(new EndEffectorHeightConstraint(eeKinematics, *referenceManagerPtr_));
+  }
+
+  // 这里旋转的惩罚用了更加直观的euler角来表达了。
+  std::vector<std::unique_ptr<PenaltyBase>> penaltyArray(6);
+  std::generate_n(penaltyArray.begin(), 3, [&] { return std::unique_ptr<PenaltyBase>(new QuadraticPenalty(muPosition)); });
+  std::generate_n(penaltyArray.begin() + 3, 3, [&] { return std::unique_ptr<PenaltyBase>(new QuadraticPenalty(muOrientation)); });
+
+  return std::unique_ptr<StateCost>(new StateSoftConstraint(std::move(constraint), std::move(penaltyArray)));
+}
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/

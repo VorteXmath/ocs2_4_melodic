@@ -192,6 +192,14 @@ endEffector
   muOrientation    5.0
 }
 
+endEffectorHeight
+{
+  ; end effector quadratic penalty scaling
+  muPosition      100.0
+  muOrientation    5.0
+}
+
+
 finalEndEffector
 {
   muPosition      10.0
